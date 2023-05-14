@@ -1,19 +1,55 @@
-name: "[Schedule] Remove old files"
+name: "[Schedule] Delete old files"
 
 on:
   schedule:
     - cron:  '0 0 * * *'
   workflow_dispatch:
+    inputs:
+      dir:
+        description: 'Directory to delete old files from'
+        required: true
+        default: 'team_cloudforet_console'
+      days_old:
+        description: 'Number of days old to delete files'
+        required: true
+        default: '1 day ago'
 
 jobs:
   delete_files:
     runs-on: ubuntu-latest
     name: Delete old files
     steps:
-      - uses: actions/checkout@master
-      - uses: daniL16/action-clean-old-files@master
+      - name: Checkout
+        uses: actions/checkout@v2
         with:
-          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
-          dir: './api/migrations'
-          base_branch: 'master'
-          days_old: '15'
+          fetch-depth: 0
+
+      - name: Delete old files
+        run: |
+          chmod +x ./scripts/delete-old-files.sh
+          ./scripts/delete-old-files.sh ${{ github.event.inputs.dir }} "${{ github.event.inputs.days_old }}"
+        shell: bash
+
+      - name: Configure git
+        run: |
+          git config --global user.email "${{ vars.GIT_EMAIL }}"
+          git config --global user.name "${{ vars.GIT_USERNAME }}"
+
+      - name: Check if there are any changes
+        id: check_changes
+        run: |
+          git diff --exit-code --quiet || echo "::set-output name=changed::true"
+        continue-on-error: true
+
+      - name: Commit changes
+        if: steps.check_changes.outputs.changed == 'true'
+        run: |
+          git add ./${{ github.event.inputs.dir }}
+          git diff-index --quiet HEAD || git commit -m "chore: delete old files in ${{ github.event.inputs.dir }} which are committed ${{ github.event.inputs.days_old }}"
+
+      - name: Push changes
+        if: steps.check_changes.outputs.changed == 'true'
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.PAT_TOKEN }}
+          branch: ${{ github.ref }}
