@@ -2,7 +2,7 @@ name: "[Schedule] Delete old files"
 
 on:
   schedule:
-    - cron:  '0 0 * * 1'
+    - cron:  '0 0 * * *'
   workflow_dispatch:
     inputs:
       dir:
@@ -12,7 +12,7 @@ on:
       days_old:
         description: 'Number of days old to delete files'
         required: true
-        default: '1 day ago'
+        default: '7 days ago'
 
 jobs:
   delete_files:
