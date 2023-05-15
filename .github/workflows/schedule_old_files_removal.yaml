@@ -19,6 +19,11 @@ jobs:
     runs-on: ubuntu-latest
     name: Delete old files
     steps:
+      - name: Set the variables
+        run: |
+          echo "DIR=${{ github.event.inputs.dir || 'team_cloudforet_console' }}" >> $GITHUB_ENV
+          echo "DAYS_OLD=${{ github.event.inputs.days_old || '7 days ago' }}" >> $GITHUB_ENV
+
       - name: Checkout
         uses: actions/checkout@v2
         with:
@@ -27,7 +32,7 @@ jobs:
       - name: Delete old files
         run: |
           chmod +x ./scripts/delete-old-files.sh
-          ./scripts/delete-old-files.sh ${{ github.event.inputs.dir }} "${{ github.event.inputs.days_old }}"
+          ./scripts/delete-old-files.sh $DIR "$DAYS_OLD"
         shell: bash
 
       - name: Configure git
@@ -45,7 +50,7 @@ jobs:
         if: steps.check_changes.outputs.changed == 'true'
         run: |
           git add ./${{ github.event.inputs.dir }}
-          git diff-index --quiet HEAD || git commit -m "chore: delete old files in ${{ github.event.inputs.dir }} which are committed ${{ github.event.inputs.days_old }}"
+          git diff-index --quiet HEAD || git commit -m "chore: delete old files in $DIR which are committed $DAYS_OLD"
 
       - name: Push changes
         if: steps.check_changes.outputs.changed == 'true'
